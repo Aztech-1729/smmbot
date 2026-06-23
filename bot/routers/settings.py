@@ -5,11 +5,10 @@ User settings router.
 from __future__ import annotations
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton
 
 from bot.database.mongo import users_col
 from bot.keyboards.common import add_footer
-from bot.utils.formatting import SEPARATOR
 
 
 router = Router(name="settings")
@@ -27,10 +26,10 @@ async def user_settings_cb(callback_query: CallbackQuery):
     notif_icon = "🟢" if notif else "🔴"
     
     text = (
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"⚙ **Settings**\n\n"
-        f"Customize your experience.\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "⚙ **Settings**\n\n"
+        "Customize your experience.\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     
     kb = [

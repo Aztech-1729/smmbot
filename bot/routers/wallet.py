@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.states import AddFundsWizard

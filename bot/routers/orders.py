@@ -5,12 +5,11 @@ Order placement and tracking router.
 from __future__ import annotations
 
 import logging
-import re
-from typing import Optional
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from bot.database.mongo import get_global_settings
 from bot.keyboards.order_kb import (
@@ -19,8 +18,7 @@ from bot.keyboards.order_kb import (
 )
 from bot.keyboards.common import add_footer
 from bot.states import OrderWizard
-from bot.models.order import OrderStatus
-from bot.services.provider import get_provider, ProviderAPIError
+from bot.services.provider import get_provider
 from bot.services.order_service import (
     calculate_user_cost, place_order, get_user_orders, get_order_by_id,
     get_order_by_provider_id, refresh_order_status, request_refill, request_cancel, InsufficientBalanceError, OrderError
@@ -325,10 +323,10 @@ async def confirm_order_cb(callback_query: CallbackQuery, state: FSMContext):
             f"❌ **Order Failed**\n\n{str(e)}\n\nAny deducted balance has been refunded.",
             reply_markup=add_footer([], "new_order")
         )
-    except Exception as e:
+    except Exception:
         logger.exception("Order error")
         await callback_query.message.edit_text(
-            f"❌ **System Error**\n\nFailed to place order. Please try again later.",
+            "❌ **System Error**\n\nFailed to place order. Please try again later.",
             reply_markup=add_footer([], "new_order")
         )
 
@@ -365,7 +363,6 @@ async def my_orders_cb(callback_query: CallbackQuery):
 
     from bot.models.order import get_status_badge
     from bot.utils.pagination import Paginator
-    from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
     
     p = Paginator(list(range(total)), page=page, per_page=10)
     text = f"📦 **My Orders** (Page {page}/{p.total_pages})\n\n"
@@ -489,9 +486,6 @@ async def request_cancel_order_cb(callback_query: CallbackQuery):
 # ---------------------------------------------------------------------------
 # Track Order (By ID)
 # ---------------------------------------------------------------------------
-
-from bot.states import OrderWizard as TrackOrderWizard # we could create a new state, let's use a dummy class
-from aiogram.fsm.state import State, StatesGroup
 
 class TrackWizard(StatesGroup):
     waiting_for_id = State()

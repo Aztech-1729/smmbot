@@ -118,15 +118,15 @@ async def adm_tview_cb(callback_query: CallbackQuery):
     badge = get_ticket_badge(ticket.get("status", ""))
     
     lines = [
-        f"━━━━━━━━━━━━━━━━━━━━━━━━",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"🎟 **Ticket:** {ticket.get('subject')}",
         f"User: `{ticket['user_id']}`",
         f"Status: {ticket.get('status')} {badge}",
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
     ]
     
     for m in ticket.get("messages", []):
-        sender = f"👤 **User**" if m.get("sender") == "user" else "🎧 **Admin**"
+        sender = "👤 **User**" if m.get("sender") == "user" else "🎧 **Admin**"
         lines.append(f"{sender} - {format_datetime(m.get('sent_at'))}")
         lines.append(f"└ {m.get('text')}\n")
         

@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery
 
 from bot.database.mongo import users_col
 from bot.keyboards.common import add_footer
-from bot.utils.formatting import format_currency, format_datetime, SEPARATOR
+from bot.utils.formatting import format_currency, format_datetime
 
 
 router = Router(name="profile")

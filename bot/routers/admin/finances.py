@@ -97,7 +97,7 @@ async def adm_depview_cb(callback_query: CallbackQuery):
         if deposit.get("admin_note"):
             text += f"Note:      {deposit['admin_note']}\n"
             
-    text += f"━━━━━━━━━━━━━━━━━━━━━━━━"
+    text += "━━━━━━━━━━━━━━━━━━━━━━━━"
     
     kb = []
     if deposit['status'] == "Pending":

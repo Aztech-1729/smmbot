@@ -78,16 +78,16 @@ async def process_search_query(message: Message, state: FSMContext):
     markup = settings.get("markup_percent", 50)
     
     from bot.utils.pagination import Paginator
-    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    from aiogram.types import InlineKeyboardButton
     from bot.utils.formatting import format_currency, truncate_text
     
     p = Paginator(results, page=1, per_page=10)
     
     lines = [
-        f"━━━━━━━━━━━━━━━━━━━━━━━━",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"🔍 **Search Results: '{query}'**",
         f"Found {len(results)} services | Page 1/{p.total_pages}",
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
     ]
     
     kb = []

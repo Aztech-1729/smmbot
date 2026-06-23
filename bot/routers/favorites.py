@@ -7,7 +7,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from aiogram import Router, F
-from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import CallbackQuery, InlineKeyboardButton
 
 from bot.database.mongo import favorites_col
 from bot.keyboards.common import add_footer

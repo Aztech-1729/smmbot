@@ -7,7 +7,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import Router, F
-from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.types import Message, CallbackQuery, InlineKeyboardButton
 from aiogram.fsm.context import FSMContext
 
 from bot.states import TicketWizard
@@ -16,7 +16,7 @@ from bot.services.ticket_service import (
     create_ticket, get_user_tickets, get_ticket_by_id, add_user_message, close_ticket
 )
 from bot.services.notification_service import notify_new_ticket_to_admins
-from bot.utils.formatting import format_datetime, SEPARATOR
+from bot.utils.formatting import format_datetime
 from bot.utils.validators import sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -28,10 +28,10 @@ async def support_cb(callback_query: CallbackQuery, state: FSMContext):
     """Support menu."""
     await state.clear()
     text = (
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"🎟 **Support**\n\n"
-        f"How can we help you today?\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "🎟 **Support**\n\n"
+        "How can we help you today?\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     
     kb = [
@@ -126,8 +126,8 @@ async def process_ticket_message(message: Message, state: FSMContext):
             chat_id=user_id,
             message_id=data["msg_id"],
             text=(
-                f"✅ **Ticket Created!**\n\n"
-                f"We have received your message and will reply shortly."
+                "✅ **Ticket Created!**\n\n"
+                "We have received your message and will reply shortly."
             ),
             reply_markup=add_footer([], "support")
         )
@@ -190,10 +190,10 @@ async def view_ticket_cb(callback_query: CallbackQuery):
     badge = get_ticket_badge(ticket.get("status", ""))
     
     lines = [
-        f"━━━━━━━━━━━━━━━━━━━━━━━━",
+        "━━━━━━━━━━━━━━━━━━━━━━━━",
         f"🎟 **Ticket:** {ticket.get('subject')}",
         f"Status: {ticket.get('status')} {badge}",
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        "━━━━━━━━━━━━━━━━━━━━━━━━\n"
     ]
     
     for m in ticket.get("messages", []):

@@ -14,7 +14,7 @@ from bot.services.ticket_service import count_open_tickets
 from bot.services.provider import get_provider
 from bot.models.transaction import TransactionType
 from bot.models.order import OrderStatus
-from bot.utils.formatting import format_currency, format_number, SEPARATOR
+from bot.utils.formatting import format_currency, format_number
 from bot.keyboards.common import add_footer
 
 router = Router(name="admin_dashboard")
@@ -26,7 +26,7 @@ async def admin_menu_cb(callback_query: CallbackQuery, state: FSMContext):
     await state.clear()
         
     await callback_query.message.edit_text(
-        f"👑 **Admin Panel**\n\nWelcome back. Select an option:",
+        "👑 **Admin Panel**\n\nWelcome back. Select an option:",
         reply_markup=admin_main_keyboard()
     )
     await callback_query.answer()

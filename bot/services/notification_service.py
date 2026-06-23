@@ -12,7 +12,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 from bot.config.settings import get_settings
 from bot.database.mongo import users_col
-from bot.utils.formatting import format_currency, format_datetime, SEPARATOR
+from bot.utils.formatting import format_currency, SEPARATOR
 from bot.keyboards.admin_kb import admin_deposit_keyboard
 
 logger = logging.getLogger(__name__)

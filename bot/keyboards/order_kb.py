@@ -175,7 +175,6 @@ def order_detail_keyboard(
 ) -> InlineKeyboardMarkup:
     """Build the order detail keyboard with refill/cancel if supported."""
     keyboard = []
-    order_id = str(order.get("provider_order_id", ""))
     mongo_id = str(order.get("_id", ""))
 
     action_row = []

@@ -14,7 +14,7 @@ from bot.states import AdminAdjustWizard
 from bot.keyboards.admin_kb import admin_user_actions_keyboard
 from bot.keyboards.common import add_footer
 from bot.services.wallet_service import admin_adjust_balance
-from bot.utils.formatting import format_currency, format_datetime, SEPARATOR
+from bot.utils.formatting import format_currency, format_datetime
 
 
 router = Router(name="admin_users")

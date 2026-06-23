@@ -87,7 +87,7 @@ async def place_order(
         raise OrderError(f"Provider error: {e.message}")
     except Exception as e:
         # Refund on any unexpected error
-        await credit_balance(user_id, user_cost, f"Refund: Order failed — unexpected error")
+        await credit_balance(user_id, user_cost, "Refund: Order failed — unexpected error")
         raise OrderError(f"Failed to place order: {str(e)}")
 
     provider_order_id = str(result.get("order", ""))
