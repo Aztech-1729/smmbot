@@ -4,7 +4,7 @@ Main menu keyboard.
 
 from __future__ import annotations
 
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 def get_main_menu(is_admin: bool = False) -> InlineKeyboardMarkup:
@@ -14,30 +14,30 @@ def get_main_menu(is_admin: bool = False) -> InlineKeyboardMarkup:
     """
     keyboard = [
         [
-            InlineKeyboardButton("🚀 New Order", callback_data="new_order"),
-            InlineKeyboardButton("📦 My Orders", callback_data="my_orders:1"),
+            InlineKeyboardButton(text="🚀 New Order", callback_data="new_order", style="success"),
+            InlineKeyboardButton(text="📦 My Orders", callback_data="my_orders:1", style="primary"),
         ],
         [
-            InlineKeyboardButton("📊 Track Order", callback_data="track_order"),
-            InlineKeyboardButton("💰 Wallet", callback_data="wallet"),
+            InlineKeyboardButton(text="📊 Track Order", callback_data="track_order", style="primary"),
+            InlineKeyboardButton(text="💰 Wallet", callback_data="wallet", style="primary"),
         ],
         [
-            InlineKeyboardButton("➕ Add Funds", callback_data="add_funds"),
-            InlineKeyboardButton("⭐ Favorites", callback_data="favorites:1"),
+            InlineKeyboardButton(text="➕ Add Funds", callback_data="add_funds", style="success"),
+            InlineKeyboardButton(text="⭐ Favorites", callback_data="favorites:1", style="primary"),
         ],
         [
-            InlineKeyboardButton("🔍 Search Service", callback_data="search"),
-            InlineKeyboardButton("🎟 Support", callback_data="support"),
+            InlineKeyboardButton(text="🔍 Search Service", callback_data="search", style="primary"),
+            InlineKeyboardButton(text="🎟 Support", callback_data="support", style="primary"),
         ],
         [
-            InlineKeyboardButton("👤 Profile", callback_data="profile"),
-            InlineKeyboardButton("⚙ Settings", callback_data="user_settings"),
+            InlineKeyboardButton(text="👤 Profile", callback_data="profile", style="primary"),
+            InlineKeyboardButton(text="⚙ Settings", callback_data="user_settings", style="primary"),
         ],
     ]
 
     if is_admin:
         keyboard.append([
-            InlineKeyboardButton("👑 Admin Panel", callback_data="admin"),
+            InlineKeyboardButton(text="👑 Admin Panel", callback_data="admin", style="danger"),
         ])
 
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)

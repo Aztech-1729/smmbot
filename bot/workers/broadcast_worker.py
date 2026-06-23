@@ -9,14 +9,14 @@ import asyncio
 import logging
 from datetime import datetime, timezone
 
-from pyrogram import Client
+from aiogram import Bot
 
 from bot.database.mongo import broadcast_logs_col, users_col
 
 logger = logging.getLogger(__name__)
 
 
-async def process_broadcast_queue(client: Client) -> None:
+async def process_broadcast_queue(bot: Bot) -> None:
     """
     Check for pending broadcasts and execute them.
     This runs periodically via APScheduler.
@@ -52,13 +52,13 @@ async def process_broadcast_queue(client: Client) -> None:
         
         try:
             if msg_type == "text":
-                await client.send_message(chat_id=user_id, text=content)
+                await bot.send_message(chat_id=user_id, text=content)
             elif msg_type == "photo":
-                await client.send_photo(chat_id=user_id, photo=file_id, caption=content)
+                await bot.send_photo(chat_id=user_id, photo=file_id, caption=content)
             elif msg_type == "video":
-                await client.send_video(chat_id=user_id, video=file_id, caption=content)
+                await bot.send_video(chat_id=user_id, video=file_id, caption=content)
             elif msg_type == "document":
-                await client.send_document(chat_id=user_id, document=file_id, caption=content)
+                await bot.send_document(chat_id=user_id, document=file_id, caption=content)
                 
             success_count += 1
         except Exception:
@@ -85,7 +85,7 @@ async def process_broadcast_queue(client: Client) -> None:
     admin_id = job.get("admin_id")
     if admin_id:
         try:
-            await client.send_message(
+            await bot.send_message(
                 chat_id=admin_id,
                 text=(
                     f"📢 **Broadcast Completed**\n\n"

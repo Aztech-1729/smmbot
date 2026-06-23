@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from datetime import datetime, timezone
 
-from pyrogram import Client
+from aiogram import Bot
 
 from bot.database.mongo import orders_col, users_col
 from bot.models.order import OrderStatus
@@ -19,7 +19,7 @@ from bot.services.notification_service import notify_order_status_changed
 logger = logging.getLogger(__name__)
 
 
-async def check_active_orders(client: Client) -> None:
+async def check_active_orders(bot: Bot) -> None:
     """
     1. Fetch all active orders from MongoDB.
     2. Batch them in chunks of 100.
@@ -52,12 +52,12 @@ async def check_active_orders(client: Client) -> None:
         chunk = provider_ids[i:i + chunk_size]
         try:
             status_map = await provider.get_multi_order_status(chunk)
-            await _process_status_map(client, status_map, p_id_to_order)
+            await _process_status_map(bot, status_map, p_id_to_order)
         except Exception as e:
             logger.error("Failed to check order statuses: %s", e)
 
 
-async def _process_status_map(client: Client, status_map: dict, p_id_to_order: dict) -> None:
+async def _process_status_map(bot: Bot, status_map: dict, p_id_to_order: dict) -> None:
     """Process the response from the multi-status API."""
     for p_id, data in status_map.items():
         if "error" in data:
@@ -110,7 +110,7 @@ async def _process_status_map(client: Client, status_map: dict, p_id_to_order: d
                 
             # Notify user
             await notify_order_status_changed(
-                client=client,
+                bot=bot,
                 user_id=order["user_id"],
                 order=order,
                 old_status=old_status,

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import List, Dict, Any
 
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.keyboards.common import back_home_close
 from bot.utils.pagination import Paginator
@@ -50,8 +50,9 @@ def categories_keyboard(categories: List[str]) -> InlineKeyboardMarkup:
     for cat in sorted(categories):
         emoji = get_category_emoji(cat)
         btn = InlineKeyboardButton(
-            f"{emoji} {truncate_text(cat, 20)}",
+            text=f"{emoji} {truncate_text(cat, 20)}",
             callback_data=f"cat:{cat[:40]}",
+            style="primary"
         )
         row.append(btn)
         if len(row) == 2:
@@ -61,7 +62,7 @@ def categories_keyboard(categories: List[str]) -> InlineKeyboardMarkup:
         keyboard.append(row)
 
     keyboard.append(back_home_close("home"))
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def service_list_keyboard(
@@ -94,8 +95,9 @@ def service_list_keyboard(
         btn_text = f"{truncate_text(name, 28)} — {format_currency(user_rate)}/1K"
         keyboard.append([
             InlineKeyboardButton(
-                btn_text,
+                text=btn_text,
                 callback_data=f"svc:{svc_id}",
+                style="primary"
             )
         ])
 
@@ -106,7 +108,7 @@ def service_list_keyboard(
 
     keyboard.append(back_home_close("new_order"))
     text = "\n".join(text_lines)
-    return text, InlineKeyboardMarkup(keyboard)
+    return text, InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def service_detail_keyboard(
@@ -144,27 +146,27 @@ def service_detail_keyboard(
 
     keyboard = [
         [
-            InlineKeyboardButton("🟦 Place Order", callback_data=f"place:{svc_id}"),
-            InlineKeyboardButton(fav_text, callback_data=fav_data),
+            InlineKeyboardButton(text="Place Order", callback_data=f"place:{svc_id}", style="success"),
+            InlineKeyboardButton(text=fav_text, callback_data=fav_data, style="primary"),
         ],
         back_home_close(f"cat:{category[:40]}"),
     ]
 
-    return text, InlineKeyboardMarkup(keyboard)
+    return text, InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def order_confirm_keyboard() -> InlineKeyboardMarkup:
     """Confirm / Cancel buttons for order placement."""
     keyboard = [
         [
-            InlineKeyboardButton("🟩 Confirm Order", callback_data="order_confirm"),
+            InlineKeyboardButton(text="Confirm Order", callback_data="order_confirm", style="success"),
         ],
         [
-            InlineKeyboardButton("🟥 Cancel", callback_data="order_cancel"),
+            InlineKeyboardButton(text="Cancel", callback_data="order_cancel", style="danger"),
         ],
         back_home_close("new_order"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def order_detail_keyboard(
@@ -182,20 +184,20 @@ def order_detail_keyboard(
         if order.get("refill_supported"):
             action_row.append(
                 InlineKeyboardButton(
-                    "🟩 Refill", callback_data=f"refill:{mongo_id}"
+                    text="Refill", callback_data=f"refill:{mongo_id}", style="primary"
                 )
             )
         if order.get("cancel_supported") and status not in ("Completed", "Cancelled"):
             action_row.append(
                 InlineKeyboardButton(
-                    "🟥 Cancel", callback_data=f"cancel_order:{mongo_id}"
+                    text="Cancel Order", callback_data=f"cancel_order:{mongo_id}", style="danger"
                 )
             )
     if action_row:
         keyboard.append(action_row)
 
     keyboard.append([
-        InlineKeyboardButton("🟩 🔄 Refresh", callback_data=f"refresh_order:{mongo_id}"),
+        InlineKeyboardButton(text="🔄 Refresh", callback_data=f"refresh_order:{mongo_id}", style="primary"),
     ])
     keyboard.append(back_home_close(back_target))
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)

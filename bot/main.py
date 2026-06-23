@@ -1,5 +1,5 @@
 """
-Main application entry point.
+Main application entry point for Aiogram 3.
 """
 
 import asyncio
@@ -10,7 +10,11 @@ try:
     import uvloop
 except ImportError:
     uvloop = None
-from pyrogram import Client
+
+from aiogram import Bot, Dispatcher
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
+from aiogram.fsm.storage.redis import RedisStorage, DefaultKeyBuilder
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from bot.config.settings import get_settings
@@ -46,16 +50,12 @@ async def main():
     except Exception as e:
         logger.warning("Initial provider cache warmup failed: %s", e)
 
-    # 3. Initialize Pyrogram client
-    # We pass the plugins dict to autoload all routers inside bot.routers
-    client = Client(
-        name="smm_panel_bot",
-        bot_token=settings.BOT_TOKEN,
-        api_id=settings.API_ID,
-        api_hash=settings.API_HASH,
-        plugins=dict(root="bot.routers"),
-        in_memory=True,   # We don't need persistent sessions for a bot token
-    )
+    # 3. Initialize Aiogram Bot and Dispatcher with Redis storage
+    bot = Bot(token=settings.BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
+    storage = RedisStorage.from_url(settings.REDIS_URL, key_builder=DefaultKeyBuilder(with_destiny=True))
+    dp = Dispatcher(storage=storage)
+
+    # TODO: Register middlewares and routers
 
     # 4. Initialize Background Scheduler
     scheduler = AsyncIOScheduler()
@@ -65,7 +65,7 @@ async def main():
         check_active_orders,
         "interval",
         minutes=5,
-        args=[client],
+        args=[bot],
         id="order_status_checker",
         replace_existing=True,
     )
@@ -75,7 +75,7 @@ async def main():
         process_broadcast_queue,
         "interval",
         seconds=30,
-        args=[client],
+        args=[bot],
         id="broadcast_processor",
         replace_existing=True,
     )
@@ -84,21 +84,16 @@ async def main():
     logger.info("APScheduler started")
 
     # 5. Run the bot
-    logger.info("Starting Pyrogram client...")
+    logger.info("Starting Aiogram Polling...")
     try:
-        await client.start()
-        logger.info("Bot started successfully. Username: @%s", client.me.username)
-        
-        # Block forever
-        from pyrogram import idle
-        await idle()
+        await bot.delete_webhook(drop_pending_updates=True)
+        await dp.start_polling(bot)
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt received. Shutting down...")
     finally:
         logger.info("Stopping services...")
         scheduler.shutdown()
-        if client.is_connected:
-            await client.stop()
+        await bot.session.close()
         await provider.close()
         await close_mongo()
         await close_redis()
@@ -106,12 +101,10 @@ async def main():
 
 
 if __name__ == "__main__":
-    # Use uvloop for maximum asyncio performance
-    if sys.platform != "win32":
+    if sys.platform != "win32" and uvloop is not None:
         try:
-            import uvloop
             uvloop.install()
-        except ImportError:
+        except Exception:
             pass
     
     asyncio.run(main())

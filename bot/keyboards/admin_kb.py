@@ -4,7 +4,7 @@ Admin panel keyboards.
 
 from __future__ import annotations
 
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.keyboards.common import back_home_close
 
@@ -13,23 +13,23 @@ def admin_main_keyboard() -> InlineKeyboardMarkup:
     """Admin panel main menu."""
     keyboard = [
         [
-            InlineKeyboardButton("📊 Dashboard", callback_data="adm_dashboard"),
+            InlineKeyboardButton(text="📊 Dashboard", callback_data="adm_dashboard", style="primary"),
         ],
         [
-            InlineKeyboardButton("👥 Users", callback_data="adm_users"),
-            InlineKeyboardButton("📦 Orders", callback_data="adm_orders:1"),
+            InlineKeyboardButton(text="👥 Users", callback_data="adm_users", style="primary"),
+            InlineKeyboardButton(text="📦 Orders", callback_data="adm_orders:1", style="primary"),
         ],
         [
-            InlineKeyboardButton("💰 Finances", callback_data="adm_finances"),
-            InlineKeyboardButton("🎟 Tickets", callback_data="adm_tickets:1"),
+            InlineKeyboardButton(text="💰 Finances", callback_data="adm_finances", style="primary"),
+            InlineKeyboardButton(text="🎟 Tickets", callback_data="adm_tickets:1", style="primary"),
         ],
         [
-            InlineKeyboardButton("📢 Broadcast", callback_data="adm_broadcast"),
-            InlineKeyboardButton("⚙ Settings", callback_data="adm_settings"),
+            InlineKeyboardButton(text="📢 Broadcast", callback_data="adm_broadcast", style="primary"),
+            InlineKeyboardButton(text="⚙ Settings", callback_data="adm_settings", style="primary"),
         ],
         back_home_close("home"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def admin_deposit_keyboard(deposit_id: str) -> InlineKeyboardMarkup:
@@ -37,14 +37,14 @@ def admin_deposit_keyboard(deposit_id: str) -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton(
-                "🟩 Approve", callback_data=f"dep_approve:{deposit_id}"
+                text="Approve", callback_data=f"dep_approve:{deposit_id}", style="success"
             ),
             InlineKeyboardButton(
-                "🟥 Reject", callback_data=f"dep_reject:{deposit_id}"
+                text="Reject", callback_data=f"dep_reject:{deposit_id}", style="danger"
             ),
         ],
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def admin_user_actions_keyboard(user_id: int) -> InlineKeyboardMarkup:
@@ -52,28 +52,28 @@ def admin_user_actions_keyboard(user_id: int) -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton(
-                "💰 Adjust Balance", callback_data=f"adm_adjust:{user_id}"
+                text="💰 Adjust Balance", callback_data=f"adm_adjust:{user_id}", style="primary"
             ),
         ],
         [
             InlineKeyboardButton(
-                "🚫 Ban User", callback_data=f"adm_ban:{user_id}"
+                text="🚫 Ban User", callback_data=f"adm_ban:{user_id}", style="danger"
             ),
             InlineKeyboardButton(
-                "✅ Unban User", callback_data=f"adm_unban:{user_id}"
+                text="✅ Unban User", callback_data=f"adm_unban:{user_id}", style="success"
             ),
         ],
         [
             InlineKeyboardButton(
-                "📦 User Orders", callback_data=f"adm_uorders:{user_id}:1"
+                text="📦 User Orders", callback_data=f"adm_uorders:{user_id}:1", style="primary"
             ),
             InlineKeyboardButton(
-                "🎟 User Tickets", callback_data=f"adm_utickets:{user_id}:1"
+                text="🎟 User Tickets", callback_data=f"adm_utickets:{user_id}:1", style="primary"
             ),
         ],
         back_home_close("adm_users"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def admin_finance_keyboard() -> InlineKeyboardMarkup:
@@ -81,30 +81,30 @@ def admin_finance_keyboard() -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton(
-                "📥 Pending Deposits", callback_data="adm_deps:Pending:1"
+                text="📥 Pending Deposits", callback_data="adm_deps:Pending:1", style="primary"
             ),
         ],
         [
             InlineKeyboardButton(
-                "✅ Approved Deposits", callback_data="adm_deps:Approved:1"
+                text="✅ Approved Deposits", callback_data="adm_deps:Approved:1", style="success"
             ),
             InlineKeyboardButton(
-                "❌ Rejected Deposits", callback_data="adm_deps:Rejected:1"
-            ),
-        ],
-        [
-            InlineKeyboardButton(
-                "📜 All Transactions", callback_data="adm_txns:1"
+                text="❌ Rejected Deposits", callback_data="adm_deps:Rejected:1", style="danger"
             ),
         ],
         [
             InlineKeyboardButton(
-                "📈 Revenue Report", callback_data="adm_revenue"
+                text="📜 All Transactions", callback_data="adm_txns:1", style="primary"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                text="📈 Revenue Report", callback_data="adm_revenue", style="primary"
             ),
         ],
         back_home_close("admin"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def admin_settings_keyboard(settings: dict) -> InlineKeyboardMarkup:
@@ -113,42 +113,44 @@ def admin_settings_keyboard(settings: dict) -> InlineKeyboardMarkup:
     keyboard = [
         [
             InlineKeyboardButton(
-                f"📊 Markup: {settings.get('markup_percent', 50)}%",
+                text=f"📊 Markup: {settings.get('markup_percent', 50)}%",
                 callback_data="adm_set_markup",
+                style="primary"
             ),
         ],
         [
             InlineKeyboardButton(
-                f"{maint_icon} Maintenance: {'ON' if settings.get('maintenance_mode') else 'OFF'}",
+                text=f"{maint_icon} Maintenance: {'ON' if settings.get('maintenance_mode') else 'OFF'}",
                 callback_data="adm_toggle_maint",
+                style="primary"
             ),
         ],
         [
             InlineKeyboardButton(
-                "📝 Welcome Message", callback_data="adm_set_welcome"
+                text="📝 Welcome Message", callback_data="adm_set_welcome", style="primary"
             ),
         ],
         [
             InlineKeyboardButton(
-                "👤 Support Username", callback_data="adm_set_support"
+                text="👤 Support Username", callback_data="adm_set_support", style="primary"
             ),
         ],
         back_home_close("admin"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
 
 
 def broadcast_type_keyboard() -> InlineKeyboardMarkup:
     """Select broadcast content type."""
     keyboard = [
         [
-            InlineKeyboardButton("📝 Text", callback_data="bcast_type:text"),
-            InlineKeyboardButton("📷 Photo", callback_data="bcast_type:photo"),
+            InlineKeyboardButton(text="📝 Text", callback_data="bcast_type:text", style="primary"),
+            InlineKeyboardButton(text="📷 Photo", callback_data="bcast_type:photo", style="primary"),
         ],
         [
-            InlineKeyboardButton("🎥 Video", callback_data="bcast_type:video"),
-            InlineKeyboardButton("📄 Document", callback_data="bcast_type:document"),
+            InlineKeyboardButton(text="🎥 Video", callback_data="bcast_type:video", style="primary"),
+            InlineKeyboardButton(text="📄 Document", callback_data="bcast_type:document", style="primary"),
         ],
         back_home_close("admin"),
     ]
-    return InlineKeyboardMarkup(keyboard)
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
