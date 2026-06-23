@@ -4,41 +4,38 @@ Admin dashboard router.
 
 from __future__ import annotations
 
-from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
 
 from bot.database.mongo import users_col, orders_col
 from bot.keyboards.admin_kb import admin_main_keyboard
-from bot.middlewares.admin_guard import is_admin, ADMIN_DENIED_MESSAGE
 from bot.services.ticket_service import count_open_tickets
-from bot.services.wallet_service import get_all_transactions
 from bot.services.provider import get_provider
 from bot.models.transaction import TransactionType
 from bot.models.order import OrderStatus
 from bot.utils.formatting import format_currency, format_number, SEPARATOR
+from bot.keyboards.common import add_footer
+
+router = Router(name="admin_dashboard")
 
 
-@Client.on_callback_query(filters.regex(r"^admin$"))
-async def admin_menu_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data == "admin")
+async def admin_menu_cb(callback_query: CallbackQuery, state: FSMContext):
     """Admin entry point."""
-    if not is_admin(callback_query.from_user.id):
-        await callback_query.answer(ADMIN_DENIED_MESSAGE, show_alert=True)
-        return
+    await state.clear()
         
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         f"👑 **Admin Panel**\n\nWelcome back. Select an option:",
         reply_markup=admin_main_keyboard()
     )
     await callback_query.answer()
 
 
-@Client.on_callback_query(filters.regex(r"^adm_dashboard$"))
-async def adm_dashboard_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data == "adm_dashboard")
+async def adm_dashboard_cb(callback_query: CallbackQuery):
     """Show aggregate admin statistics."""
-    if not is_admin(callback_query.from_user.id):
-        return
-        
-    await callback_query.edit_message_text("📊 Loading dashboard...")
+    await callback_query.message.edit_text("📊 Loading dashboard...")
     
     # Gathering stats
     total_users = await users_col().count_documents({})
@@ -58,8 +55,6 @@ async def adm_dashboard_cb(client: Client, callback_query: CallbackQuery):
     total_revenue = rev_list[0]["total"] if rev_list else 0.0
     
     # Profit (sum of (user_cost - provider_rate * qty/1000) for non-failed orders)
-    # Approximate it by taking total revenue - provider cost if needed
-    # But since we track user_cost and provider_rate, we can sum profit directly
     pipeline_prof = [
         {"$match": {"status": {"$nin": [OrderStatus.CANCELLED.value]}}},
         {"$project": {
@@ -100,5 +95,5 @@ async def adm_dashboard_cb(client: Client, callback_query: CallbackQuery):
         f"━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     
-    from bot.keyboards.common import add_footer
-    await callback_query.edit_message_text(text, reply_markup=add_footer([], "admin"))
+    await callback_query.message.edit_text(text, reply_markup=add_footer([], "admin"))
+    await callback_query.answer()

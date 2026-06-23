@@ -7,7 +7,7 @@ from __future__ import annotations
 from math import ceil
 from typing import List, Any
 
-from pyrogram.types import InlineKeyboardButton
+from aiogram.types import InlineKeyboardButton
 
 
 class Paginator:
@@ -49,23 +49,26 @@ class Paginator:
         if self.has_prev:
             buttons.append(
                 InlineKeyboardButton(
-                    "◀ Prev",
+                    text="◀ Prev",
                     callback_data=f"{callback_prefix}:{self.page - 1}",
+                    style="primary"
                 )
             )
 
         buttons.append(
             InlineKeyboardButton(
-                f"Page {self.page}/{self.total_pages}",
+                text=f"Page {self.page}/{self.total_pages}",
                 callback_data="noop",
+                style="primary"
             )
         )
 
         if self.has_next:
             buttons.append(
                 InlineKeyboardButton(
-                    "Next ▶",
+                    text="Next ▶",
                     callback_data=f"{callback_prefix}:{self.page + 1}",
+                    style="primary"
                 )
             )
 

@@ -4,16 +4,18 @@ Profile router.
 
 from __future__ import annotations
 
-from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery
+from aiogram import Router, F
+from aiogram.types import CallbackQuery
 
 from bot.database.mongo import users_col
 from bot.keyboards.common import add_footer
 from bot.utils.formatting import format_currency, format_datetime, SEPARATOR
 
 
-@Client.on_callback_query(filters.regex(r"^profile$"))
-async def profile_cb(client: Client, callback_query: CallbackQuery):
+router = Router(name="profile")
+
+@router.callback_query(F.data == "profile")
+async def profile_cb(callback_query: CallbackQuery):
     """Show the user profile page."""
     user_id = callback_query.from_user.id
     user = await users_col().find_one({"_id": user_id})
@@ -37,5 +39,5 @@ async def profile_cb(client: Client, callback_query: CallbackQuery):
         f"━━━━━━━━━━━━━━━━━━━━━━━━"
     )
     
-    await callback_query.edit_message_text(text, reply_markup=add_footer([], "home"))
+    await callback_query.message.edit_text(text, reply_markup=add_footer([], "home"))
     await callback_query.answer()

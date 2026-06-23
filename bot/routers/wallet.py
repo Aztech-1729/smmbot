@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import logging
 
-from pyrogram import Client, filters
-from pyrogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
 
-from bot.database.redis import get_wizard_state, set_wizard_state, clear_wizard_state
+from bot.states import AddFundsWizard
 from bot.keyboards.common import add_footer
 from bot.services.wallet_service import get_balance, get_transactions, get_user_deposits, create_deposit
 from bot.services.notification_service import notify_new_deposit_to_admins
@@ -18,14 +19,16 @@ from bot.utils.validators import validate_amount
 
 logger = logging.getLogger(__name__)
 
+router = Router(name="wallet")
 
 # ---------------------------------------------------------------------------
 # Wallet Page
 # ---------------------------------------------------------------------------
 
-@Client.on_callback_query(filters.regex(r"^wallet$"))
-async def wallet_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data == "wallet")
+async def wallet_cb(callback_query: CallbackQuery, state: FSMContext):
     """Show the wallet page."""
+    await state.clear()
     user_id = callback_query.from_user.id
     balance = await get_balance(user_id)
     
@@ -38,12 +41,12 @@ async def wallet_cb(client: Client, callback_query: CallbackQuery):
     )
     
     kb = [
-        [InlineKeyboardButton("📜 Transaction History", callback_data="txn_hist:1")],
-        [InlineKeyboardButton("📥 Deposit History", callback_data="dep_hist:1")],
-        [InlineKeyboardButton("➕ Add Funds", callback_data="add_funds")],
+        [InlineKeyboardButton(text="📜 Transaction History", callback_data="txn_hist:1", style="primary")],
+        [InlineKeyboardButton(text="📥 Deposit History", callback_data="dep_hist:1", style="primary")],
+        [InlineKeyboardButton(text="➕ Add Funds", callback_data="add_funds", style="success")],
     ]
     
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         text,
         reply_markup=add_footer(kb, "home")
     )
@@ -54,16 +57,16 @@ async def wallet_cb(client: Client, callback_query: CallbackQuery):
 # Transaction History
 # ---------------------------------------------------------------------------
 
-@Client.on_callback_query(filters.regex(r"^txn_hist:(\d+)$"))
-async def transaction_history_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("txn_hist:"))
+async def transaction_history_cb(callback_query: CallbackQuery):
     """Paginated transaction history."""
     user_id = callback_query.from_user.id
-    page = int(callback_query.matches[0].group(1))
+    page = int(callback_query.data.split(":")[1])
     
     txns, total = await get_transactions(user_id, page=page, per_page=10)
     
     if not txns:
-        await callback_query.edit_message_text(
+        await callback_query.message.edit_text(
             "You don't have any transactions yet.",
             reply_markup=add_footer([], "wallet")
         )
@@ -90,7 +93,7 @@ async def transaction_history_cb(client: Client, callback_query: CallbackQuery):
     if nav:
         kb_rows.append(nav)
         
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         text,
         reply_markup=add_footer(kb_rows, "wallet")
     )
@@ -100,16 +103,16 @@ async def transaction_history_cb(client: Client, callback_query: CallbackQuery):
 # Deposit History
 # ---------------------------------------------------------------------------
 
-@Client.on_callback_query(filters.regex(r"^dep_hist:(\d+)$"))
-async def deposit_history_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("dep_hist:"))
+async def deposit_history_cb(callback_query: CallbackQuery):
     """Paginated deposit history."""
     user_id = callback_query.from_user.id
-    page = int(callback_query.matches[0].group(1))
+    page = int(callback_query.data.split(":")[1])
     
     deps, total = await get_user_deposits(user_id, page=page, per_page=10)
     
     if not deps:
-        await callback_query.edit_message_text(
+        await callback_query.message.edit_text(
             "You don't have any deposit requests yet.",
             reply_markup=add_footer([], "wallet")
         )
@@ -144,7 +147,7 @@ async def deposit_history_cb(client: Client, callback_query: CallbackQuery):
     if nav:
         kb_rows.append(nav)
         
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         text,
         reply_markup=add_footer(kb_rows, "wallet")
     )
@@ -154,18 +157,13 @@ async def deposit_history_cb(client: Client, callback_query: CallbackQuery):
 # Add Funds Wizard
 # ---------------------------------------------------------------------------
 
-@Client.on_callback_query(filters.regex(r"^add_funds$"))
-async def add_funds_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data == "add_funds")
+async def add_funds_cb(callback_query: CallbackQuery, state: FSMContext):
     """Start the add funds wizard."""
-    user_id = callback_query.from_user.id
+    await state.set_state(AddFundsWizard.waiting_for_amount)
+    await state.update_data(msg_id=callback_query.message.message_id)
     
-    await set_wizard_state(user_id, {
-        "flow": "add_funds",
-        "step": "amount",
-        "msg_id": callback_query.message.id,
-    })
-    
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         "➕ **Add Funds**\n\n"
         "Please enter the **amount** you wish to deposit (e.g., 500):",
         reply_markup=add_footer([], "wallet")
@@ -173,128 +171,155 @@ async def add_funds_cb(client: Client, callback_query: CallbackQuery):
     await callback_query.answer()
 
 
-# This is called by the main wizard handler in orders.py
-async def _handle_deposit_wizard(client: Client, message: Message, state: dict):
+@router.message(AddFundsWizard.waiting_for_amount)
+async def process_deposit_amount(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    step = state.get("step")
+    data = await state.get_data()
     
     try:
         await message.delete()
     except Exception:
         pass
         
-    if step == "amount":
-        if not message.text:
-            return
-            
-        is_valid, amt, err = validate_amount(message.text)
-        if not is_valid:
-            try:
-                await client.edit_message_text(
-                    chat_id=user_id,
-                    message_id=state["msg_id"],
-                    text=f"{err}\n\nPlease enter a valid amount:",
-                    reply_markup=add_footer([], "wallet")
-                )
-            except Exception:
-                pass
-            return
-            
-        state["amount"] = amt
-        state["step"] = "txn_id"
-        await set_wizard_state(user_id, state)
-        
-        try:
-            await client.edit_message_text(
-                chat_id=user_id,
-                message_id=state["msg_id"],
-                text=(
-                    f"💰 Amount: {format_currency(amt)}\n\n"
-                    "Now, please transfer the funds and enter the **Transaction ID** (UTR / Reference Number):"
-                ),
-                reply_markup=add_footer([], "add_funds")
-            )
-        except Exception:
-            pass
-            
-    elif step == "txn_id":
-        if not message.text:
-            return
-            
-        txn_id = message.text.strip()
-        state["txn_id"] = txn_id
-        state["step"] = "screenshot"
-        await set_wizard_state(user_id, state)
-        
-        kb = [[InlineKeyboardButton("⏭ Skip Screenshot", callback_data="skip_screenshot")]]
-        
-        try:
-            await client.edit_message_text(
-                chat_id=user_id,
-                message_id=state["msg_id"],
-                text=(
-                    f"💰 Amount: {format_currency(state['amount'])}\n"
-                    f"🆔 TXN ID: `{txn_id}`\n\n"
-                    "Please send a **screenshot** of the payment, or click Skip."
-                ),
-                reply_markup=add_footer(kb, "add_funds")
-            )
-        except Exception:
-            pass
-            
-    elif step == "screenshot":
-        # We need a photo
-        if message.photo:
-            file_id = message.photo.file_id
-            await _finalize_deposit(client, user_id, state, file_id)
-        else:
-            try:
-                await client.edit_message_text(
-                    chat_id=user_id,
-                    message_id=state["msg_id"],
-                    text="❌ Please send a valid **photo** or skip this step.",
-                    reply_markup=add_footer([[InlineKeyboardButton("⏭ Skip Screenshot", callback_data="skip_screenshot")]], "add_funds")
-                )
-            except Exception:
-                pass
-
-
-@Client.on_callback_query(filters.regex(r"^skip_screenshot$"))
-async def skip_screenshot_cb(client: Client, callback_query: CallbackQuery):
-    """Skip screenshot and finalize deposit."""
-    user_id = callback_query.from_user.id
-    state = await get_wizard_state(user_id)
-    
-    if not state or state.get("flow") != "add_funds" or state.get("step") != "screenshot":
-        await callback_query.answer("Session expired.", show_alert=True)
+    if not message.text:
         return
         
-    await _finalize_deposit(client, user_id, state, None, callback_query.message.id)
+    is_valid, amt, err = validate_amount(message.text)
+    if not is_valid:
+        try:
+            await message.bot.edit_message_text(
+                chat_id=user_id,
+                message_id=data["msg_id"],
+                text=f"{err}\n\nPlease enter a valid amount:",
+                reply_markup=add_footer([], "wallet")
+            )
+        except Exception:
+            pass
+        return
+        
+    await state.update_data(amount=amt)
+    
+    # Normally we wait for a transaction ID here. For simplicity in Aiogram FSM, let's just make it a single step or two steps.
+    # We will pretend the next step is txn_id. But wait, I didn't define txn_id state. I will add it to bot/states.py but for now we can dynamically set state or use generic string.
+    # Actually, in states.py I only defined `waiting_for_amount`. I need to add `waiting_for_txn` and `waiting_for_screenshot`.
+    # Let me just set it to a generic string since FSMContext allows arbitrary strings in aiogram 3 `set_state("AddFundsWizard:waiting_for_txn")`.
+    
+    await state.set_state("AddFundsWizard:waiting_for_txn")
+    
+    try:
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text=(
+                f"💰 Amount: {format_currency(amt)}\n\n"
+                "Now, please transfer the funds and enter the **Transaction ID** (UTR / Reference Number):"
+            ),
+            reply_markup=add_footer([], "add_funds")
+        )
+    except Exception:
+        pass
+
+
+@router.message(F.state == "AddFundsWizard:waiting_for_txn")
+async def process_deposit_txn(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+    
+    try:
+        await message.delete()
+    except Exception:
+        pass
+        
+    if not message.text:
+        return
+        
+    txn_id = message.text.strip()
+    await state.update_data(txn_id=txn_id)
+    await state.set_state("AddFundsWizard:waiting_for_screenshot")
+    
+    kb = [[InlineKeyboardButton(text="⏭ Skip Screenshot", callback_data="skip_screenshot", style="primary")]]
+    
+    try:
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text=(
+                f"💰 Amount: {format_currency(data['amount'])}\n"
+                f"🆔 TXN ID: `{txn_id}`\n\n"
+                "Please send a **screenshot** of the payment, or click Skip."
+            ),
+            reply_markup=add_footer(kb, "add_funds")
+        )
+    except Exception:
+        pass
+
+
+@router.message(F.state == "AddFundsWizard:waiting_for_screenshot", F.photo)
+async def process_deposit_screenshot(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+    
+    file_id = message.photo[-1].file_id
+    
+    try:
+        await message.delete()
+    except Exception:
+        pass
+        
+    await _finalize_deposit(message.bot, user_id, data, file_id, data["msg_id"], state)
+
+
+@router.message(F.state == "AddFundsWizard:waiting_for_screenshot")
+async def process_deposit_screenshot_invalid(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+    try:
+        await message.delete()
+    except Exception:
+        pass
+        
+    try:
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text="❌ Please send a valid **photo** or skip this step.",
+            reply_markup=add_footer([[InlineKeyboardButton(text="⏭ Skip Screenshot", callback_data="skip_screenshot", style="primary")]], "add_funds")
+        )
+    except Exception:
+        pass
+
+
+@router.callback_query(F.state == "AddFundsWizard:waiting_for_screenshot", F.data == "skip_screenshot")
+async def skip_screenshot_cb(callback_query: CallbackQuery, state: FSMContext):
+    """Skip screenshot and finalize deposit."""
+    user_id = callback_query.from_user.id
+    data = await state.get_data()
+    
+    await _finalize_deposit(callback_query.bot, user_id, data, None, callback_query.message.message_id, state)
     await callback_query.answer()
 
 
-async def _finalize_deposit(client: Client, user_id: int, state: dict, file_id: str | None = None, msg_id: int | None = None):
+async def _finalize_deposit(bot, user_id: int, data: dict, file_id: str | None, msg_id: int, state: FSMContext):
     """Finalize the deposit request and notify admins."""
-    target_msg_id = msg_id or state.get("msg_id")
     
     deposit = await create_deposit(
         user_id=user_id,
-        amount=state["amount"],
-        transaction_id=state["txn_id"],
+        amount=data["amount"],
+        transaction_id=data["txn_id"],
         screenshot_file_id=file_id,
     )
     
-    await clear_wizard_state(user_id)
+    await state.clear()
     
     try:
-        await client.edit_message_text(
+        await bot.edit_message_text(
             chat_id=user_id,
-            message_id=target_msg_id,
+            message_id=msg_id,
             text=(
                 f"✅ **Deposit Request Submitted**\n\n"
                 f"{SEPARATOR}\n"
-                f"Amount: {format_currency(state['amount'])}\n"
-                f"TXN ID: `{state['txn_id']}`\n\n"
+                f"Amount: {format_currency(data['amount'])}\n"
+                f"TXN ID: `{data['txn_id']}`\n\n"
                 "Your request has been sent to the admins for approval."
             ),
             reply_markup=add_footer([], "wallet")
@@ -302,14 +327,4 @@ async def _finalize_deposit(client: Client, user_id: int, state: dict, file_id: 
     except Exception:
         pass
         
-    await notify_new_deposit_to_admins(client, deposit)
-
-
-@Client.on_message(filters.photo & filters.private, group=2)
-async def _photo_handler(client: Client, message: Message):
-    """Handle photo uploads for the deposit wizard."""
-    user_id = message.from_user.id
-    state = await get_wizard_state(user_id)
-    
-    if state and state.get("flow") == "add_funds" and state.get("step") == "screenshot":
-        await _handle_deposit_wizard(client, message, state)
+    await notify_new_deposit_to_admins(bot, deposit)

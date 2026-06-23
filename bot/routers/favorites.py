@@ -6,18 +6,20 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
 
 from bot.database.mongo import favorites_col
 from bot.keyboards.common import add_footer
 
 
-@Client.on_callback_query(filters.regex(r"^fav:(\d+)$"))
-async def add_favorite_cb(client: Client, callback_query: CallbackQuery):
+router = Router(name="favorites")
+
+@router.callback_query(F.data.startswith("fav:"))
+async def add_favorite_cb(callback_query: CallbackQuery):
     """Add a service to favorites."""
     user_id = callback_query.from_user.id
-    svc_id = callback_query.matches[0].group(1)
+    svc_id = callback_query.data.split(":")[1]
     
     from bot.services.provider import get_provider
     provider = get_provider()
@@ -42,34 +44,34 @@ async def add_favorite_cb(client: Client, callback_query: CallbackQuery):
         
     # Refresh detail page
     from bot.routers.orders import service_detail_cb
-    await service_detail_cb(client, callback_query)
+    await service_detail_cb(callback_query)
 
 
-@Client.on_callback_query(filters.regex(r"^unfav:(\d+)$"))
-async def remove_favorite_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("unfav:"))
+async def remove_favorite_cb(callback_query: CallbackQuery):
     """Remove a service from favorites."""
     user_id = callback_query.from_user.id
-    svc_id = callback_query.matches[0].group(1)
+    svc_id = callback_query.data.split(":")[1]
     
     await favorites_col().delete_one({"user_id": user_id, "service_id": svc_id})
     await callback_query.answer("Removed from favorites.", show_alert=True)
     
     # Refresh detail page
     from bot.routers.orders import service_detail_cb
-    await service_detail_cb(client, callback_query)
+    await service_detail_cb(callback_query)
 
 
-@Client.on_callback_query(filters.regex(r"^favorites:(\d+)$"))
-async def list_favorites_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("favorites:"))
+async def list_favorites_cb(callback_query: CallbackQuery):
     """List favorited services."""
     user_id = callback_query.from_user.id
-    page = int(callback_query.matches[0].group(1))
+    page = int(callback_query.data.split(":")[1])
     
     col = favorites_col()
     total = await col.count_documents({"user_id": user_id})
     
     if total == 0:
-        await callback_query.edit_message_text(
+        await callback_query.message.edit_text(
             "You haven't added any services to your favorites yet.\n\n"
             "Browse services and click ⭐ **Add to Favorites**.",
             reply_markup=add_footer([], "home")
@@ -92,11 +94,11 @@ async def list_favorites_cb(client: Client, callback_query: CallbackQuery):
     for fav in favs:
         name = fav.get("service_name", "Service")
         svc_id = fav.get("service_id")
-        kb.append([InlineKeyboardButton(f"⭐ {truncate_text(name, 35)}", callback_data=f"svc:{svc_id}")])
+        kb.append([InlineKeyboardButton(text=f"⭐ {truncate_text(name, 35)}", callback_data=f"svc:{svc_id}")])
         
     nav = p.get_nav_buttons("favorites")
     if nav:
         kb.append(nav)
         
-    await callback_query.edit_message_text(text, reply_markup=add_footer(kb, "home"))
+    await callback_query.message.edit_text(text, reply_markup=add_footer(kb, "home"))
     await callback_query.answer()

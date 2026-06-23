@@ -4,36 +4,35 @@ Admin settings router.
 
 from __future__ import annotations
 
-from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery, Message, InlineKeyboardButton
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, Message, InlineKeyboardButton
+from aiogram.fsm.context import FSMContext
 
 from bot.database.mongo import get_global_settings, update_global_settings
-from bot.database.redis import get_wizard_state, set_wizard_state, clear_wizard_state
+from bot.states import AdminSettingsWizard
 from bot.keyboards.admin_kb import admin_settings_keyboard
 from bot.keyboards.common import add_footer
-from bot.middlewares.admin_guard import is_admin
 
 
-@Client.on_callback_query(filters.regex(r"^adm_settings$"))
-async def adm_settings_cb(client: Client, callback_query: CallbackQuery):
+router = Router(name="admin_settings")
+
+@router.callback_query(F.data == "adm_settings")
+async def adm_settings_cb(callback_query: CallbackQuery, state: FSMContext):
     """Show global settings."""
-    if not is_admin(callback_query.from_user.id):
-        return
+    await state.clear()
         
     settings = await get_global_settings()
     
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         "⚙ **Global Settings**\n\nManage platform configuration:",
         reply_markup=admin_settings_keyboard(settings)
     )
+    await callback_query.answer()
 
 
-@Client.on_callback_query(filters.regex(r"^adm_toggle_maint$"))
-async def adm_toggle_maint_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data == "adm_toggle_maint")
+async def adm_toggle_maint_cb(callback_query: CallbackQuery):
     """Toggle maintenance mode."""
-    if not is_admin(callback_query.from_user.id):
-        return
-        
     settings = await get_global_settings()
     current = settings.get("maintenance_mode", False)
     
@@ -41,21 +40,22 @@ async def adm_toggle_maint_cb(client: Client, callback_query: CallbackQuery):
     await callback_query.answer(f"Maintenance mode: {'ON' if not current else 'OFF'}", show_alert=True)
     
     # Refresh view
-    await adm_settings_cb(client, callback_query)
+    await adm_settings_cb(callback_query, FSMContext(storage=callback_query.bot.storage, key=callback_query.bot.storage.resolve_address(callback_query.bot, callback_query.message.chat.id, callback_query.from_user.id)))
 
 
-@Client.on_callback_query(filters.regex(r"^adm_set_(markup|welcome|support)$"))
-async def adm_set_wizard_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("adm_set_"))
+async def adm_set_wizard_cb(callback_query: CallbackQuery, state: FSMContext):
     """Start setting edit wizard."""
-    if not is_admin(callback_query.from_user.id):
-        return
-        
-    field = callback_query.matches[0].group(1)
+    field = callback_query.data.split("_")[2] # markup, welcome, support
     
-    await set_wizard_state(callback_query.from_user.id, {
-        "flow": f"adm_set_{field}",
-        "msg_id": callback_query.message.id,
-    })
+    if field == "markup":
+        await state.set_state(AdminSettingsWizard.waiting_for_markup)
+    elif field == "welcome":
+        await state.set_state(AdminSettingsWizard.waiting_for_welcome)
+    elif field == "support":
+        await state.set_state(AdminSettingsWizard.waiting_for_support)
+        
+    await state.update_data(msg_id=callback_query.message.message_id)
     
     prompts = {
         "markup": "Enter the new **Markup Percentage** (e.g., 50 for 50%):",
@@ -63,43 +63,80 @@ async def adm_set_wizard_cb(client: Client, callback_query: CallbackQuery):
         "support": "Enter the new **Support Username** (e.g., @MySupport):",
     }
     
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         f"⚙ **Update Setting**\n\n{prompts[field]}",
         reply_markup=add_footer([], "adm_settings")
     )
+    await callback_query.answer()
 
 
-async def _handle_admin_setting_wizard(client: Client, message: Message, state: dict):
+@router.message(AdminSettingsWizard.waiting_for_markup)
+async def process_markup_setting(message: Message, state: FSMContext):
     user_id = message.from_user.id
-    flow = state.get("flow")
+    data = await state.get_data()
     
     try:
         await message.delete()
     except Exception:
         pass
         
-    update = {}
-    if flow == "adm_set_markup":
-        try:
-            val = int(message.text.strip())
-            update = {"markup_percent": val}
-        except ValueError:
-            return
-    elif flow == "adm_set_welcome":
-        update = {"welcome_message": message.text}
-    elif flow == "adm_set_support":
-        update = {"support_username": message.text.strip()}
+    try:
+        val = int(message.text.strip())
+        await update_global_settings({"markup_percent": val})
+        await state.clear()
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text="✅ Setting updated successfully.",
+            reply_markup=add_footer([[InlineKeyboardButton(text="🔙 Back to Settings", callback_data="adm_settings", style="primary")]], "admin")
+        )
+    except ValueError:
+        pass
+
+
+@router.message(AdminSettingsWizard.waiting_for_welcome)
+async def process_welcome_setting(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+    
+    try:
+        await message.delete()
+    except Exception:
+        pass
         
-    if update:
-        await update_global_settings(update)
-        await clear_wizard_state(user_id)
+    await update_global_settings({"welcome_message": message.text})
+    await state.clear()
+    
+    try:
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text="✅ Setting updated successfully.",
+            reply_markup=add_footer([[InlineKeyboardButton(text="🔙 Back to Settings", callback_data="adm_settings", style="primary")]], "admin")
+        )
+    except Exception:
+        pass
+
+
+@router.message(AdminSettingsWizard.waiting_for_support)
+async def process_support_setting(message: Message, state: FSMContext):
+    user_id = message.from_user.id
+    data = await state.get_data()
+    
+    try:
+        await message.delete()
+    except Exception:
+        pass
         
-        try:
-            await client.edit_message_text(
-                chat_id=user_id,
-                message_id=state["msg_id"],
-                text="✅ Setting updated successfully.",
-                reply_markup=add_footer([[InlineKeyboardButton("🔙 Back to Settings", callback_data="adm_settings")]], "admin")
-            )
-        except Exception:
-            pass
+    await update_global_settings({"support_username": message.text.strip()})
+    await state.clear()
+    
+    try:
+        await message.bot.edit_message_text(
+            chat_id=user_id,
+            message_id=data["msg_id"],
+            text="✅ Setting updated successfully.",
+            reply_markup=add_footer([[InlineKeyboardButton(text="🔙 Back to Settings", callback_data="adm_settings", style="primary")]], "admin")
+        )
+    except Exception:
+        pass

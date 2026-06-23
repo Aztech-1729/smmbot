@@ -4,38 +4,41 @@ Search services router.
 
 from __future__ import annotations
 
-from pyrogram import Client, filters
-from pyrogram.types import Message, CallbackQuery
+from aiogram import Router, F
+from aiogram.types import Message, CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
 
 from bot.database.mongo import get_global_settings
-from bot.database.redis import get_wizard_state, set_wizard_state, clear_wizard_state
 from bot.keyboards.common import add_footer
-from bot.keyboards.order_kb import service_list_keyboard
 from bot.services.provider import get_provider
 from bot.utils.validators import sanitize_text
 
+router = Router(name="search")
 
-@Client.on_callback_query(filters.regex(r"^search$"))
-async def search_cb(client: Client, callback_query: CallbackQuery):
+class SearchWizard(StatesGroup):
+    waiting_for_query = State()
+
+
+@router.callback_query(F.data == "search")
+async def search_cb(callback_query: CallbackQuery, state: FSMContext):
     """Start search wizard."""
-    user_id = callback_query.from_user.id
+    await state.set_state(SearchWizard.waiting_for_query)
+    await state.update_data(msg_id=callback_query.message.message_id)
     
-    await set_wizard_state(user_id, {
-        "flow": "search",
-        "msg_id": callback_query.message.id,
-    })
-    
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         "🔍 **Search Services**\n\nPlease enter a keyword to search for (e.g., 'Instagram likes'):",
         reply_markup=add_footer([], "home")
     )
     await callback_query.answer()
 
 
-async def _handle_search_wizard(client: Client, message: Message, state: dict):
+@router.message(SearchWizard.waiting_for_query)
+async def process_search_query(message: Message, state: FSMContext):
     """Handle text input for search."""
     user_id = message.from_user.id
     query = sanitize_text(message.text, 50).lower()
+    data = await state.get_data()
     
     try:
         await message.delete()
@@ -57,9 +60,9 @@ async def _handle_search_wizard(client: Client, message: Message, state: dict):
             
     if not results:
         try:
-            await client.edit_message_text(
+            await message.bot.edit_message_text(
                 chat_id=user_id,
-                message_id=state["msg_id"],
+                message_id=data["msg_id"],
                 text=f"🔍 No services found for **'{query}'**.\n\nPlease try another keyword:",
                 reply_markup=add_footer([], "home")
             )
@@ -67,16 +70,15 @@ async def _handle_search_wizard(client: Client, message: Message, state: dict):
             pass
         return
         
-    await clear_wizard_state(user_id)
+    await state.clear()
     
     # Show results using the generic service list keyboard
     # but we'll use a special callback prefix for pagination
     settings = await get_global_settings()
     markup = settings.get("markup_percent", 50)
     
-    # Let's write a quick inline builder for search results
     from bot.utils.pagination import Paginator
-    from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+    from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
     from bot.utils.formatting import format_currency, truncate_text
     
     p = Paginator(results, page=1, per_page=10)
@@ -95,16 +97,15 @@ async def _handle_search_wizard(client: Client, message: Message, state: dict):
         name = svc.get("name", "Service")
         svc_id = svc.get("service", "0")
         btn_text = f"{truncate_text(name, 28)} — {format_currency(user_rate)}/1K"
-        kb.append([InlineKeyboardButton(btn_text, callback_data=f"svc:{svc_id}")])
+        kb.append([InlineKeyboardButton(text=btn_text, callback_data=f"svc:{svc_id}", style="primary")])
         
-    # We won't do pagination for search to keep it simple, just top 10
     if p.has_next:
         lines.append("*(Showing top 10 results)*")
         
     try:
-        await client.edit_message_text(
+        await message.bot.edit_message_text(
             chat_id=user_id,
-            message_id=state["msg_id"],
+            message_id=data["msg_id"],
             text="\n".join(lines),
             reply_markup=add_footer(kb, "home")
         )

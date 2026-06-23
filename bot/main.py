@@ -55,9 +55,47 @@ async def main():
     storage = RedisStorage.from_url(settings.REDIS_URL, key_builder=DefaultKeyBuilder(with_destiny=True))
     dp = Dispatcher(storage=storage)
 
-    # TODO: Register middlewares and routers
+    # 4. Register middlewares and routers
+    from bot.middlewares.aiogram_middlewares import AuthMiddleware
+    dp.message.outer_middleware(AuthMiddleware())
+    dp.callback_query.outer_middleware(AuthMiddleware())
 
-    # 4. Initialize Background Scheduler
+    from bot.routers.start import router as start_router
+    from bot.routers.orders import router as orders_router
+    from bot.routers.wallet import router as wallet_router
+    from bot.routers.support import router as support_router
+    from bot.routers.profile import router as profile_router
+    from bot.routers.settings import router as settings_router
+    from bot.routers.search import router as search_router
+    from bot.routers.favorites import router as favorites_router
+
+    from bot.routers.admin.dashboard import router as admin_dashboard_router
+    from bot.routers.admin.settings import router as admin_settings_router
+    from bot.routers.admin.users import router as admin_users_router
+    from bot.routers.admin.finances import router as admin_finances_router
+    from bot.routers.admin.orders import router as admin_orders_router
+    from bot.routers.admin.tickets import router as admin_tickets_router
+    from bot.routers.admin.broadcast import router as admin_broadcast_router
+
+    dp.include_routers(
+        start_router,
+        orders_router,
+        wallet_router,
+        support_router,
+        profile_router,
+        settings_router,
+        search_router,
+        favorites_router,
+        admin_dashboard_router,
+        admin_settings_router,
+        admin_users_router,
+        admin_finances_router,
+        admin_orders_router,
+        admin_tickets_router,
+        admin_broadcast_router
+    )
+
+    # 5. Initialize Background Scheduler
     scheduler = AsyncIOScheduler()
     
     # Run order status check every 5 minutes

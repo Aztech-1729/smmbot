@@ -4,27 +4,25 @@ Admin orders router.
 
 from __future__ import annotations
 
-from pyrogram import Client, filters
-from pyrogram.types import CallbackQuery, InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram import Router, F
+from aiogram.types import CallbackQuery, InlineKeyboardButton
 
-from bot.middlewares.admin_guard import is_admin
 from bot.services.order_service import get_all_orders_paginated
 from bot.models.order import get_status_badge
 from bot.keyboards.common import add_footer
 from bot.utils.formatting import format_currency
 
 
-@Client.on_callback_query(filters.regex(r"^adm_orders:(\d+)$"))
-async def adm_orders_cb(client: Client, callback_query: CallbackQuery):
+router = Router(name="admin_orders")
+
+@router.callback_query(F.data.startswith("adm_orders:"))
+async def adm_orders_cb(callback_query: CallbackQuery):
     """Admin global order list."""
-    if not is_admin(callback_query.from_user.id):
-        return
-        
-    page = int(callback_query.matches[0].group(1))
+    page = int(callback_query.data.split(":")[1])
     orders, total = await get_all_orders_paginated(page=page)
     
     if not orders:
-        await callback_query.edit_message_text(
+        await callback_query.message.edit_text(
             "No orders found in the system.",
             reply_markup=add_footer([], "admin")
         )
@@ -42,34 +40,29 @@ async def adm_orders_cb(client: Client, callback_query: CallbackQuery):
         short_name = name[:15] + "…" if len(name) > 15 else name
         
         btn_text = f"{badge} [{o['user_id']}] {short_name} — {format_currency(o.get('user_cost', 0))}"
-        # We reuse the user's order view, but the back target will be adm_orders
-        # For simplicity, we'll route it back to adm_orders using the standard view route
-        kb_rows.append([InlineKeyboardButton(btn_text, callback_data=f"ord:{str(o['_id'])}:{page}")])
+        kb_rows.append([InlineKeyboardButton(text=btn_text, callback_data=f"ord:{str(o['_id'])}:{page}", style="primary")])
 
     nav = p.get_nav_buttons("adm_orders")
     if nav:
         kb_rows.append(nav)
         
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         text,
         reply_markup=add_footer(kb_rows, "admin")
     )
 
 
-# Note: We need a special callback for user-specific admin orders
-@Client.on_callback_query(filters.regex(r"^adm_uorders:(\d+):(\d+)$"))
-async def adm_uorders_cb(client: Client, callback_query: CallbackQuery):
+@router.callback_query(F.data.startswith("adm_uorders:"))
+async def adm_uorders_cb(callback_query: CallbackQuery):
     """Admin view of a specific user's orders."""
-    if not is_admin(callback_query.from_user.id):
-        return
-        
-    target_id = int(callback_query.matches[0].group(1))
-    page = int(callback_query.matches[0].group(2))
+    parts = callback_query.data.split(":")
+    target_id = int(parts[1])
+    page = int(parts[2])
     
     orders, total = await get_all_orders_paginated(page=page, user_filter=target_id)
     
     if not orders:
-        await callback_query.edit_message_text(
+        await callback_query.message.edit_text(
             f"User `{target_id}` has no orders.",
             reply_markup=add_footer([], f"adm_usr:{target_id}")
         )
@@ -87,13 +80,13 @@ async def adm_uorders_cb(client: Client, callback_query: CallbackQuery):
         short_name = name[:20] + "…" if len(name) > 20 else name
         
         btn_text = f"{badge} {short_name} — {format_currency(o.get('user_cost', 0))}"
-        kb_rows.append([InlineKeyboardButton(btn_text, callback_data=f"ord:{str(o['_id'])}:{page}")])
+        kb_rows.append([InlineKeyboardButton(text=btn_text, callback_data=f"ord:{str(o['_id'])}:{page}", style="primary")])
 
     nav = p.get_nav_buttons(f"adm_uorders:{target_id}")
     if nav:
         kb_rows.append(nav)
         
-    await callback_query.edit_message_text(
+    await callback_query.message.edit_text(
         text,
         reply_markup=add_footer(kb_rows, f"adm_usr:{target_id}")
     )
