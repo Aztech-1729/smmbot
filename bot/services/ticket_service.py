@@ -10,6 +10,8 @@ from typing import List, Optional, Tuple
 
 from bson import ObjectId
 
+from pymongo import ReturnDocument
+
 from bot.database.mongo import tickets_col
 from bot.models.ticket import TicketStatus, TicketMessage
 
@@ -55,7 +57,7 @@ async def add_user_message(ticket_id: str, text: str) -> Optional[dict]:
                 "updated_at": now,
             },
         },
-        return_document=True,
+        return_document=ReturnDocument.AFTER,
     )
     return result
 
@@ -79,7 +81,7 @@ async def add_admin_reply(ticket_id: str, text: str) -> Optional[dict]:
                 "updated_at": now,
             },
         },
-        return_document=True,
+        return_document=ReturnDocument.AFTER,
     )
     return result
 
@@ -99,7 +101,7 @@ async def close_ticket(ticket_id: str) -> Optional[dict]:
                 "updated_at": datetime.now(timezone.utc),
             },
         },
-        return_document=True,
+        return_document=ReturnDocument.AFTER,
     )
     return result
 

@@ -21,11 +21,12 @@ async def process_broadcast_queue(bot: Bot) -> None:
     Check for pending broadcasts and execute them.
     This runs periodically via APScheduler.
     """
+    from pymongo import ReturnDocument
     job = await broadcast_logs_col().find_one_and_update(
         {"status": "pending"},
         {"$set": {"status": "processing"}},
         sort=[("created_at", 1)],
-        return_document=True,
+        return_document=ReturnDocument.AFTER,
     )
     
     if not job:

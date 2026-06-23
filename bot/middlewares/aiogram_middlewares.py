@@ -33,6 +33,7 @@ class AuthMiddleware(BaseMiddleware):
         user_id = user.id
         
         # Upsert user
+        from pymongo import ReturnDocument
         doc = await users_col().find_one_and_update(
             {"_id": user_id},
             {
@@ -53,7 +54,7 @@ class AuthMiddleware(BaseMiddleware):
                 },
             },
             upsert=True,
-            return_document=True,
+            return_document=ReturnDocument.AFTER,
         )
 
         doc = doc or {}
