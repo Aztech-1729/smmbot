@@ -56,7 +56,7 @@ async def main():
     dp = Dispatcher(storage=storage)
 
     # 4. Register middlewares and routers
-    from bot.middlewares.aiogram_middlewares import AuthMiddleware
+    from bot.middlewares.aiogram_middlewares import AuthMiddleware, AdminMiddleware
     dp.message.outer_middleware(AuthMiddleware())
     dp.callback_query.outer_middleware(AuthMiddleware())
 
@@ -77,6 +77,20 @@ async def main():
     from bot.routers.admin.tickets import router as admin_tickets_router
     from bot.routers.admin.broadcast import router as admin_broadcast_router
 
+    admin_routers = [
+        admin_dashboard_router,
+        admin_settings_router,
+        admin_users_router,
+        admin_finances_router,
+        admin_orders_router,
+        admin_tickets_router,
+        admin_broadcast_router
+    ]
+    
+    for r in admin_routers:
+        r.message.middleware(AdminMiddleware())
+        r.callback_query.middleware(AdminMiddleware())
+
     dp.include_routers(
         start_router,
         orders_router,
@@ -86,13 +100,7 @@ async def main():
         settings_router,
         search_router,
         favorites_router,
-        admin_dashboard_router,
-        admin_settings_router,
-        admin_users_router,
-        admin_finances_router,
-        admin_orders_router,
-        admin_tickets_router,
-        admin_broadcast_router
+        *admin_routers
     )
 
     # 5. Initialize Background Scheduler

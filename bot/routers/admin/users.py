@@ -159,7 +159,7 @@ async def process_adjust_amount(message: Message, state: FSMContext):
         pass
 
 
-@router.message(F.state == "AdminAdjustWizard:waiting_for_reason")
+@router.message(AdminAdjustWizard.waiting_for_reason)
 async def process_adjust_reason(message: Message, state: FSMContext):
     user_id = message.from_user.id
     data = await state.get_data()

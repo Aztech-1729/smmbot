@@ -17,6 +17,7 @@ class TicketWizard(StatesGroup):
 class AdminBroadcastWizard(StatesGroup):
     waiting_for_type = State()
     waiting_for_content = State()
+    confirming = State()
 
 class AddFundsWizard(StatesGroup):
     waiting_for_amount = State()
@@ -28,3 +29,4 @@ class AdminSettingsWizard(StatesGroup):
 
 class AdminAdjustWizard(StatesGroup):
     waiting_for_amount = State()
+    waiting_for_reason = State()

@@ -153,7 +153,7 @@ async def _show_broadcast_preview(bot, user_id: int, data: dict):
         pass
 
 
-@router.callback_query(F.state == "AdminBroadcastWizard:confirming", F.data == "bcast_confirm")
+@router.callback_query(AdminBroadcastWizard.confirming, F.data == "bcast_confirm")
 async def bcast_confirm_cb(callback_query: CallbackQuery, state: FSMContext):
     """Confirm and queue the broadcast."""
     user_id = callback_query.from_user.id

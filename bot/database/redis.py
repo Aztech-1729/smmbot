@@ -71,28 +71,6 @@ async def delete_cached(key: str) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Wizard state helpers (order creation, deposit flow)
-# ---------------------------------------------------------------------------
-
-WIZARD_TTL = 1800  # 30 minutes
-
-
-async def get_wizard_state(user_id: int) -> Optional[dict]:
-    """Retrieve the wizard state for a user."""
-    return await get_cached(f"wizard:{user_id}")
-
-
-async def set_wizard_state(user_id: int, state: dict) -> None:
-    """Store the wizard state for a user."""
-    await set_cached(f"wizard:{user_id}", state, ttl=WIZARD_TTL)
-
-
-async def clear_wizard_state(user_id: int) -> None:
-    """Clear the wizard state for a user."""
-    await delete_cached(f"wizard:{user_id}")
-
-
-# ---------------------------------------------------------------------------
 # Rate limiting helper
 # ---------------------------------------------------------------------------
 
