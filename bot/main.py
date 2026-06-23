@@ -51,8 +51,8 @@ async def main():
     client = Client(
         name="smm_panel_bot",
         bot_token=settings.BOT_TOKEN,
-        api_id=2040,      # Default Pyrogram API ID (use your own for prod)
-        api_hash="b18441a1ff607e10a989891a5462e627", # Default Pyrogram Hash
+        api_id=settings.API_ID,
+        api_hash=settings.API_HASH,
         plugins=dict(root="bot.routers"),
         in_memory=True,   # We don't need persistent sessions for a bot token
     )

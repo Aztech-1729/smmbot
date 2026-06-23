@@ -31,13 +31,13 @@ services:
     image: redis:7.2-alpine
     container_name: smm_redis
     restart: always
-    command: redis-server --requirepass securepassword
+    command: redis-server --requirepass securepassword --port 6380
     volumes:
       - redis_data:/data
     networks:
       - smm_network
     ports:
-      - "6379:6379" # Optional: expose for external admin tools
+      - "6380:6380" # Optional: expose for external admin tools
 
 networks:
   smm_network:

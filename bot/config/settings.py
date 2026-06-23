@@ -19,6 +19,8 @@ class Settings(BaseSettings):
 
     # Telegram
     BOT_TOKEN: str
+    API_ID: int
+    API_HASH: str
 
     # MongoDB
     MONGO_URI: str = "mongodb://mongo:27017/smm_panel"
